@@ -558,6 +558,7 @@ class RemoteWidget(QWidget):
 
         if ser.is_open:
             ser.close()
+        self.update_com_ports()
 
     def on_send_btn_pressed(self) -> None:
         """Send message to serial port."""
