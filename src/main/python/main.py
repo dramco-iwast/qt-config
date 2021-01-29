@@ -4,7 +4,7 @@ from typing import Iterator, Tuple
 
 import serial
 from fbs_runtime.application_context.PyQt5 import ApplicationContext
-from PyQt5.QtCore import QSettings
+
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QGridLayout,
                              QLabel, QLineEdit, QMessageBox, QPlainTextEdit,
@@ -12,13 +12,10 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QGridLayout,
 from quamash import QEventLoop
 from serial.tools.list_ports import comports
 
-from ATCommands import Sensor
 import ATCommands as Motherboard
-
-#import ATCommands as Motherboard
 import qdarkstyle
-#from ATCommands import Sensor
 from CustomDebug import CustomDebug
+import PowerReport
 
 # Object for access to the serial port
 _bytesize = serial.EIGHTBITS
@@ -33,7 +30,7 @@ ser = serial.Serial(baudrate=_baudrate, xonxoff=_flowcontrol,
 SETTING_PORT_NAME = 'port_name'
 SETTING_MESSAGE = "message"
 
-VERSION = "version 1.0 by Gilles Callebaut"
+VERSION = "Version 2.0 by Pierre Verhulst (from V1.0 by Gilles Callebaut)"
 
 
 def gen_serial_ports() -> Iterator[Tuple[str, str]]:
@@ -55,6 +52,15 @@ class RemoteWidget(QWidget):
         super().__init__(parent)
 
         self._connected_sensors = {}
+        self.resize(700, 500)
+
+        # Varibles for PowerReport
+        self.window_power_r = None
+        self.power_config_name = []
+        self.power_config_id = []
+        self.power_th = []
+        self.power_pol = []
+        self.power_data_acc = False
 
         # debug messages
         self.debug_label = QLabel(self.tr('Debug'))
@@ -87,15 +93,22 @@ class RemoteWidget(QWidget):
         self.connect_btn.pressed.connect(self.on_connect_btn_pressed)
         self.disconnect_btn.pressed.connect(self.on_disconnect_btn_pressed)
 
+        # New Configuration Button
+        self.new_config_btn = QPushButton(self.tr('New'))
+        self.new_config_btn.setVisible(False)
+        self.new_config_btn.pressed.connect(self.on_new_config_pressed)
+
         # poll messages
         # Enabled?
-        #self.poll_checkbox = QCheckBox("Poll?", self)
+        # self.poll_checkbox = QCheckBox("Poll?", self)
         # self.poll_checkbox.stateChanged.connect(self.click_poll_sensor)
         # Seconds
         self.poll_label = QLabel(self.tr('Poll interval (minutes):'))
         self.poll_lineedit = QLineEdit()
         self.poll_label.setBuddy(self.poll_lineedit)
+        self.poll_label.setVisible(False)
         self.poll_lineedit.setEnabled(True)
+        self.poll_lineedit.setVisible(False)
         # self.poll_lineedit.returnPressed.connect(self.)
 
         # threshold
@@ -194,65 +207,83 @@ class RemoteWidget(QWidget):
         self.save_btn.pressed.connect(self.on_save_btn_pressed)
         self.disconnect_btn.pressed.connect(self.on_disconnect_btn_pressed)
 
+        # Power Report Button
+        self.power_report_btn = QPushButton(self.tr('Power Report'))
+        self.power_report_btn.setVisible(False)
+        self.power_report_btn.pressed.connect(self.on_power_report_btn_pressed)
+
+        # Data Accumulation Enabling/Disabling
+        self.accumulation_checkbox = QCheckBox("Data Accumulation ?", self)
+        self.accumulation_checkbox.stateChanged.connect(self.click_accumulation_checkbox)
+        self.accumulation_checkbox.setVisible(False)
+
         # Arrange Layout
         layout = QGridLayout()
 
         # COM Port line
         layout.addWidget(self.port_label, 0, 0)
-        layout.addWidget(self.port_combobox, 0, 1, 1, 2)
-        layout.addWidget(self.connect_btn, 0, 3)
-        layout.addWidget(self.refresh_com_ports_btn, 0, 4)
-        #layout.addWidget(self.port_motherboard, 0, 1, 2)
+        layout.addWidget(self.port_combobox, 0, 1, 1, 3)
+        layout.addWidget(self.connect_btn, 0, 4)
+        layout.addWidget(self.refresh_com_ports_btn, 0, 5)
+        # layout.addWidget(self.port_motherboard, 0, 1, 2)
 
         # Sensors line
         layout.addWidget(self.sensor_label, 1, 0)
-        layout.addWidget(self.sensor_combobox, 1, 1, 1, 2)
-        layout.addWidget(self.sensor_btn, 1, 3)
-        layout.addWidget(self.save_btn, 1, 4)
+        layout.addWidget(self.sensor_combobox, 1, 1, 1, 3)
+        layout.addWidget(self.sensor_btn, 1, 4)
+        layout.addWidget(self.save_btn, 1, 5)
 
         # Polling line
 
-        #layout.addWidget(self.poll_checkbox, 2, 0)
-        layout.addWidget(self.poll_label, 2, 1)
-        layout.addWidget(self.poll_lineedit, 2, 2)
+        # layout.addWidget(self.poll_checkbox, 2, 0)
+        layout.addWidget(self.poll_label, 3, 1)
+        layout.addWidget(self.poll_lineedit, 3, 2)
 
         # threshold line
 
-        layout.addWidget(self.threshold_label_1, 3, 0)
-        layout.addWidget(self.threshold_checkbox_1, 3, 1)
-        layout.addWidget(self.threshold_high_label_1, 3, 2)
-        layout.addWidget(self.threshold_high_lineedit_1, 3, 3)
-        layout.addWidget(self.threshold_low_label_1, 3, 4)
-        layout.addWidget(self.threshold_low_lineedit_1, 3, 5)
+        layout.addWidget(self.threshold_label_1, 4, 0)
+        layout.addWidget(self.threshold_checkbox_1, 4, 1)
+        layout.addWidget(self.threshold_high_label_1, 4, 2)
+        layout.addWidget(self.threshold_high_lineedit_1, 4, 3)
+        layout.addWidget(self.threshold_low_label_1, 4, 4)
+        layout.addWidget(self.threshold_low_lineedit_1, 4, 5)
 
-        layout.addWidget(self.threshold_label_2, 4, 0)
-        layout.addWidget(self.threshold_checkbox_2, 4, 1)
-        layout.addWidget(self.threshold_high_label_2, 4, 2)
-        layout.addWidget(self.threshold_high_lineedit_2, 4, 3)
-        layout.addWidget(self.threshold_low_label_2, 4, 4)
-        layout.addWidget(self.threshold_low_lineedit_2, 4, 5)
+        layout.addWidget(self.threshold_label_2, 5, 0)
+        layout.addWidget(self.threshold_checkbox_2, 5, 1)
+        layout.addWidget(self.threshold_high_label_2, 5, 2)
+        layout.addWidget(self.threshold_high_lineedit_2, 5, 3)
+        layout.addWidget(self.threshold_low_label_2, 5, 4)
+        layout.addWidget(self.threshold_low_lineedit_2, 5, 5)
 
-        layout.addWidget(self.threshold_label_3, 5, 0)
-        layout.addWidget(self.threshold_checkbox_3, 5, 1)
-        layout.addWidget(self.threshold_high_label_3, 5, 2)
-        layout.addWidget(self.threshold_high_lineedit_3, 5, 3)
-        layout.addWidget(self.threshold_low_label_3, 5, 4)
-        layout.addWidget(self.threshold_low_lineedit_3, 5, 5)
+        layout.addWidget(self.threshold_label_3, 6, 0)
+        layout.addWidget(self.threshold_checkbox_3, 6, 1)
+        layout.addWidget(self.threshold_high_label_3, 6, 2)
+        layout.addWidget(self.threshold_high_lineedit_3, 6, 3)
+        layout.addWidget(self.threshold_low_label_3, 6, 4)
+        layout.addWidget(self.threshold_low_lineedit_3, 6, 5)
 
-        layout.addWidget(self.threshold_label_4, 6, 0)
-        layout.addWidget(self.threshold_checkbox_4, 6, 1)
-        layout.addWidget(self.threshold_high_label_4, 6, 2)
-        layout.addWidget(self.threshold_high_lineedit_4, 6, 3)
-        layout.addWidget(self.threshold_low_label_4, 6, 4)
-        layout.addWidget(self.threshold_low_lineedit_4, 6, 5)
+        layout.addWidget(self.threshold_label_4, 7, 0)
+        layout.addWidget(self.threshold_checkbox_4, 7, 1)
+        layout.addWidget(self.threshold_high_label_4, 7, 2)
+        layout.addWidget(self.threshold_high_lineedit_4, 7, 3)
+        layout.addWidget(self.threshold_low_label_4, 7, 4)
+        layout.addWidget(self.threshold_low_lineedit_4, 7, 5)
 
         # Debug
-        layout.addWidget(self.debug_label, 7, 0)
-        layout.addWidget(self.debug_textedit, 8, 0, 1, 5)
+        layout.addWidget(self.debug_label, 8, 0)
+        layout.addWidget(self.debug_textedit, 9, 0, 1, 6)
 
         # Save and disconnect layout
+        layout.addWidget(self.disconnect_btn, 10, 5)
 
-        layout.addWidget(self.disconnect_btn, 9, 4)
+        # Power Report Button
+        layout.addWidget(self.power_report_btn, 10, 0)
+
+        # Accumulation Checkbox
+        layout.addWidget(self.accumulation_checkbox, 2, 1)
+
+        # New Configuration Button
+        layout.addWidget(self.new_config_btn, 10, 4)
 
         self.remove_metric_rows_from_gui()
 
@@ -307,6 +338,9 @@ class RemoteWidget(QWidget):
             "GUI", F"Selected {self.port_combobox.currentText()} COM ports")
 
     def remove_metric_rows_from_gui(self):
+        self.poll_lineedit.setVisible(False)
+        self.poll_label.setVisible(False)
+
         self.threshold_label_1.setVisible(False)
         self.threshold_label_2.setVisible(False)
         self.threshold_label_3.setVisible(False)
@@ -344,16 +378,29 @@ class RemoteWidget(QWidget):
         sensor_str = self.sensor_combobox.currentText()
         selected_sensor = self._connected_sensors[sensor_str]
         self._debug.write("APP", F"Loading sensor data from {selected_sensor}")
-        print(self._connected_sensors)
         Motherboard.load_data(selected_sensor, self._debug, ser)
 
         # self.poll_checkbox.setCheckState(selected_sensor._polling_enabled)
-        self.poll_lineedit.setText(
-            str(selected_sensor._polling_interval_sec//60))
-        for idx, (th_e, th_h, th_l, label) in enumerate(zip(selected_sensor._thresholds_enabled, selected_sensor.get_thresholds(which_th=Motherboard.TH_HIGH, to_machine=False), selected_sensor.get_thresholds(which_th=Motherboard.TH_LOW, to_machine=False), selected_sensor._metric_labels)):
+        if selected_sensor.get_name() == 'Button Sensor':
+            self.poll_label.setVisible(False)
+            self.poll_lineedit.setVisible(False)
+            self.poll_lineedit.setEnabled(False)
+        else:
+            self.poll_label.setVisible(True)
+            self.poll_lineedit.setVisible(True)
+            self.poll_lineedit.setEnabled(True)
+            self.poll_lineedit.setText(
+                str(selected_sensor._polling_interval_sec // 60))
+
+        for idx, (th_e, th_h, th_l, label) in enumerate(zip(selected_sensor._thresholds_enabled,
+                                                            selected_sensor.get_thresholds(which_th=Motherboard.TH_HIGH,
+                                                                                           to_machine=False),
+                                                            selected_sensor.get_thresholds(which_th=Motherboard.TH_LOW,
+                                                                                           to_machine=False),
+                                                            selected_sensor._metric_labels)):
             th_h = str(th_h)
             th_l = str(th_l)
-            
+
             if idx == 0:
                 self.threshold_label_1.setText(label)
                 self.threshold_label_1.setVisible(True)
@@ -399,6 +446,55 @@ class RemoteWidget(QWidget):
                 self.threshold_low_label_4.setVisible(True)
                 self.threshold_high_label_4.setVisible(True)
 
+    def on_power_report_btn_pressed(self):
+        """Display Power Measurement for the selected configuration """
+        # TODO
+        if self.window_power_r is None:
+            self.power_report_btn.setVisible(False)
+            nb_bd = len(self.power_config_id)
+
+            if nb_bd == 0:
+                self.window_power_r = PowerReport.PowerReport(data_acc=self.power_data_acc)
+            elif nb_bd == 1:
+                self.window_power_r = PowerReport.PowerReport(data_acc=self.power_data_acc,
+                                                              id_config_1=self.power_config_id[0],
+                                                              poll_interval_1=self.power_pol[0],
+                                                              thresholds_1=self.power_th[0])
+            elif nb_bd == 2:
+                self.window_power_r = PowerReport.PowerReport(data_acc=self.power_data_acc,
+                                                              id_config_1=self.power_config_id[0],
+                                                              poll_interval_1=self.power_pol[0],
+                                                              thresholds_1=self.power_th[0],
+                                                              id_config_2=self.power_config_id[1],
+                                                              poll_interval_2=self.power_pol[1],
+                                                              thresholds_2=self.power_th[1])
+            elif nb_bd == 3:
+                self.window_power_r = PowerReport.PowerReport(data_acc=self.power_data_acc,
+                                                              id_config_1=self.power_config_id[0],
+                                                              poll_interval_1=self.power_pol[0],
+                                                              thresholds_1=self.power_th[0],
+                                                              id_config_2=self.power_config_id[1],
+                                                              poll_interval_2=self.power_pol[1],
+                                                              thresholds_2=self.power_th[1],
+                                                              id_config_3=self.power_config_id[2],
+                                                              poll_interval_3=self.power_pol[2],
+                                                              thresholds_3=self.power_th[2])
+            elif nb_bd == 4:
+                self.window_power_r = PowerReport.PowerReport(data_acc=self.power_data_acc,
+                                                              id_config_1=self.power_config_id[0],
+                                                              poll_interval_1=self.power_pol[0],
+                                                              thresholds_1=self.power_th[0],
+                                                              id_config_2=self.power_config_id[1],
+                                                              poll_interval_2=self.power_pol[1],
+                                                              thresholds_2=self.power_th[1],
+                                                              id_config_3=self.power_config_id[2],
+                                                              poll_interval_3=self.power_pol[2],
+                                                              thresholds_3=self.power_th[2],
+                                                              id_config_4=self.power_config_id[3],
+                                                              poll_interval_4=self.power_pol[3],
+                                                              thresholds_4=self.power_th[3])
+            self.window_power_r.show()
+
     @property
     def port(self) -> str:
         """Return the current serial port."""
@@ -433,6 +529,13 @@ class RemoteWidget(QWidget):
         pass
         # TODO
 
+    def click_accumulation_checkbox(self):
+        (err, acc_confirm) = Motherboard.set_accumulation(
+            ser, self._debug, enable=self.accumulation_checkbox.isChecked())
+        if (not err):
+            self._debug.write("APP", F"Accumulation {acc_confirm}")
+        self.power_data_acc = self.accumulation_checkbox.isChecked()
+
     def on_save_btn_pressed(self):
         sensor_str = self.sensor_combobox.currentText()
         selected_sensor = self._connected_sensors[sensor_str]
@@ -441,9 +544,9 @@ class RemoteWidget(QWidget):
         # update data from input to selected_sensor object
         # update motherboard
 
-        #selected_sensor._polling_enabled = self.poll_checkbox.isChecked()
-        selected_sensor._polling_interval_sec = int(
-            self.poll_lineedit.text())*60
+        # selected_sensor._polling_enabled = self.poll_checkbox.isChecked()
+        if selected_sensor.get_name() != 'Button Sensor':
+            selected_sensor._polling_interval_sec = int(self.poll_lineedit.text()) * 60
 
         if self.threshold_label_1.isVisible():
             # read data from threshold 1
@@ -489,7 +592,39 @@ class RemoteWidget(QWidget):
 
                         self._debug.write(
                             "APP", F"Saving metric 4 from {sensor_str}")
+
         Motherboard.upload_sensor(selected_sensor, ser, self._debug)
+
+        # For the power report -----------------------------------------------------------------------------------------
+        idc = self.power_config_name.index(selected_sensor.get_name())
+        if selected_sensor.get_polling_interval_sec() is not 0:
+            self.power_pol[idc] = int(selected_sensor.get_polling_interval_sec()/60)
+        flag = False
+        for metrics in range(selected_sensor.get_num_metrics()):
+            if selected_sensor.get_thresholds_enabled(metrics) is True:
+                flag = True
+                break
+        if flag is True:
+            self.power_th[idc] = True
+            if selected_sensor.get_name() == 'Power Sensor':
+                self.power_config_id[idc] = 3
+            elif selected_sensor.get_name() == 'Sound Sensor':
+                self.power_config_id[idc] = 5
+            elif selected_sensor.get_name() == 'Environmental Sensor':
+                self.power_config_id[idc] = 7
+        else:
+            self.power_th[idc] = False
+            if selected_sensor.get_name() == 'Power Sensor':
+                self.power_config_id[idc] = 2
+            elif selected_sensor.get_name() == 'Sound Sensor':
+                self.power_config_id[idc] = 4
+            elif selected_sensor.get_name() == 'Environmental Sensor':
+                self.power_config_id[idc] = 6
+
+        if self.window_power_r is not None:
+            self.window_power_r = None
+            self.power_report_btn.setVisible(True)
+        # --------------------------------------------------------------------------------------------------------------
 
     def on_connect_btn_pressed(self) -> None:
         """Open serial connection to the specified port."""
@@ -509,10 +644,15 @@ class RemoteWidget(QWidget):
                 "COM", F"Serial port {self.port} is open.")
             (err, motherboard_id) = Motherboard.handle_ping(ser, self._debug)
 
-            if(not err):
+            if (not err):
                 self._debug.write("COM", F"Connected to {motherboard_id}")
                 self.connect_btn.setEnabled(False)
                 self.disconnect_btn.setVisible(True)
+                self.disconnect_btn.pressed.connect(self.on_disconnect_btn_pressed)
+                self.sensor_btn.pressed.connect(self.on_sensor_btn_pressed)
+                self.save_btn.pressed.connect(self.on_save_btn_pressed)
+                self.accumulation_checkbox.setVisible(True)
+                self.accumulation_checkbox.setChecked(False)
                 self.port_combobox.setDisabled(True)
                 self.save_btn.setEnabled(True)
                 self.load_sensors()
@@ -538,6 +678,21 @@ class RemoteWidget(QWidget):
                 _name = s.get_name()
                 _id = s.get_addr()
 
+                # For the power report ---------------------------------------------------------------------------------
+                self.power_config_name.append(_name)
+                if _name == 'Button Sensor':
+                    self.power_config_id.append(1)
+                elif _name == 'Power Sensor':
+                    self.power_config_id.append(2)
+                elif _name == 'Sound Sensor':
+                    self.power_config_id.append(4)
+                elif _name == 'Environmental Sensor':
+                    self.power_config_id.append(6)
+                self.power_pol.append(False)
+                self.power_th.append(False)
+                self.power_report_btn.setVisible(True)
+                # ------------------------------------------------------------------------------------------------------
+
                 _sensor_str = F"{_name} [{_id}]"
                 self._debug.write("GUI", F"Adding Sensor: {_sensor_str}")
 
@@ -553,7 +708,10 @@ class RemoteWidget(QWidget):
 
     def on_disconnect_btn_pressed(self) -> None:
         """Close current serial connection."""
-
+        self.disconnect_btn.pressed.disconnect()
+        self.new_config_btn.setVisible(True)
+        self.save_btn.pressed.disconnect()
+        self.sensor_btn.pressed.disconnect()
         Motherboard.close(ser, self._debug)
 
         if ser.is_open:
@@ -564,6 +722,33 @@ class RemoteWidget(QWidget):
         """Send message to serial port."""
         msg = self.msg_lineedit.text() + '\r\n'
         loop.call_soon(send_serial_async, msg)
+
+    def on_new_config_pressed(self):
+        """Reset all variables to restart a new configuration"""
+        self._connected_sensors = {}
+        self.window_power_r = None
+        self.power_config_name = []
+        self.power_config_id = []
+        self.power_th = []
+        self.power_pol = []
+        self.power_data_acc = False
+
+        self._debug = CustomDebug(self.debug_textedit)
+        self.update_com_ports()
+
+        self.remove_metric_rows_from_gui()
+        self._debug.write("GUI", "Application started successfully")
+        self._debug.write("GUI", VERSION)
+        self.update_com_ports()
+
+        self.sensor_combobox.clear()
+        self.sensor_btn.setVisible(False)
+        self.save_btn.setVisible(False)
+        self.accumulation_checkbox.setVisible(False)
+        self.new_config_btn.setVisible(False)
+        self.disconnect_btn.setVisible(False)
+        self.connect_btn.setEnabled(True)
+        self.port_combobox.setEnabled(True)
 
     async def receive_serial_async(self) -> None:
         """Wait for incoming data, convert it to text and add to Textedit."""
@@ -576,7 +761,7 @@ class RemoteWidget(QWidget):
 
 
 if __name__ == '__main__':
-    appctxt = ApplicationContext()       # 1. Instantiate ApplicationContext
+    appctxt = ApplicationContext()  # 1. Instantiate ApplicationContext
     app = QApplication([])
     loop = QEventLoop()
     asyncio.set_event_loop(loop)
@@ -589,7 +774,7 @@ if __name__ == '__main__':
     w = RemoteWidget()
     w.show()
 
-    exit_code = appctxt.app.exec_()      # 2. Invoke appctxt.app.exec_()
+    exit_code = appctxt.app.exec_()  # 2. Invoke appctxt.app.exec_()
     sys.exit(exit_code)
 
     with loop:
