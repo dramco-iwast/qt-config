@@ -16,9 +16,9 @@ Function .onInit
   ;Do not use InstallDir at all so we can detect empty $InstDir!
   ${If} $InstDir == "" ; /D not used
       ${If} $MultiUser.InstallMode == "AllUsers"
-          StrCpy $InstDir "$PROGRAMFILES\IWAST Configurator V2"
+          StrCpy $InstDir "$PROGRAMFILES\IWAST Configurator V2.1"
       ${Else}
-          StrCpy $InstDir "$LOCALAPPDATA\IWAST Configurator V2"
+          StrCpy $InstDir "$LOCALAPPDATA\IWAST Configurator V2.1"
       ${EndIf}
   ${EndIf}
 FunctionEnd
@@ -30,8 +30,8 @@ FunctionEnd
 ;--------------------------------
 ;General
 
-  Name "IWAST Configurator V2"
-  OutFile "..\IWAST Configurator V2Setup.exe"
+  Name "IWAST Configurator V2.1"
+  OutFile "..\IWAST Configurator V2.1Setup.exe"
 
 ;--------------------------------
 ;Interface Settings
@@ -41,14 +41,14 @@ FunctionEnd
 ;--------------------------------
 ;Pages
 
-  !define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of IWAST Configurator V2.$\r$\n$\r$\n$\r$\nClick Next to continue."
+  !define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of IWAST Configurator V2.1.$\r$\n$\r$\n$\r$\nClick Next to continue."
   !insertmacro MUI_PAGE_WELCOME
   !insertmacro MUI_PAGE_DIRECTORY
   !insertmacro MUI_PAGE_INSTFILES
     !define MUI_FINISHPAGE_NOAUTOCLOSE
     !define MUI_FINISHPAGE_RUN
     !define MUI_FINISHPAGE_RUN_CHECKED
-    !define MUI_FINISHPAGE_RUN_TEXT "Run IWAST Configurator V2"
+    !define MUI_FINISHPAGE_RUN_TEXT "Run IWAST Configurator V2.1"
     !define MUI_FINISHPAGE_RUN_FUNCTION "LaunchLink"
   !insertmacro MUI_PAGE_FINISH
 
@@ -64,14 +64,14 @@ FunctionEnd
 ;Installer Sections
 
 !define UNINST_KEY \
-  "Software\Microsoft\Windows\CurrentVersion\Uninstall\IWAST Configurator V2"
+  "Software\Microsoft\Windows\CurrentVersion\Uninstall\IWAST Configurator V2.1"
 Section
   SetOutPath "$InstDir"
-  File /r "..\IWAST Configurator V2\*"
-  WriteRegStr SHCTX "Software\IWAST Configurator V2" "" $InstDir
+  File /r "..\IWAST Configurator V2.1\*"
+  WriteRegStr SHCTX "Software\IWAST Configurator V2.1" "" $InstDir
   WriteUninstaller "$InstDir\uninstall.exe"
-  CreateShortCut "$SMPROGRAMS\IWAST Configurator V2.lnk" "$InstDir\IWAST Configurator V2.exe"
-  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayName" "IWAST Configurator V2"
+  CreateShortCut "$SMPROGRAMS\IWAST Configurator V2.1.lnk" "$InstDir\IWAST Configurator V2.1.exe"
+  WriteRegStr SHCTX "${UNINST_KEY}" "DisplayName" "IWAST Configurator V2.1"
   WriteRegStr SHCTX "${UNINST_KEY}" "UninstallString" \
     "$\"$InstDir\uninstall.exe$\" /$MultiUser.InstallMode"
   WriteRegStr SHCTX "${UNINST_KEY}" "QuietUninstallString" \
@@ -89,13 +89,13 @@ SectionEnd
 Section "Uninstall"
 
   RMDir /r "$InstDir"
-  Delete "$SMPROGRAMS\IWAST Configurator V2.lnk"
-  DeleteRegKey /ifempty SHCTX "Software\IWAST Configurator V2"
+  Delete "$SMPROGRAMS\IWAST Configurator V2.1.lnk"
+  DeleteRegKey /ifempty SHCTX "Software\IWAST Configurator V2.1"
   DeleteRegKey SHCTX "${UNINST_KEY}"
 
 SectionEnd
 
 Function LaunchLink
   !addplugindir "."
-  ShellExecAsUser::ShellExecAsUser "open" "$SMPROGRAMS\IWAST Configurator V2.lnk"
+  ShellExecAsUser::ShellExecAsUser "open" "$SMPROGRAMS\IWAST Configurator V2.1.lnk"
 FunctionEnd
