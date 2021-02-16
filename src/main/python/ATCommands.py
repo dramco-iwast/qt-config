@@ -1,15 +1,12 @@
 AT_PING_REQ = "AT+PNG?"
 AT_PING_RES = "+PNG:"  # +PNG: <motherboard-id>
 
-
 AT_LIST_REQ = "AT+LS?"
 AT_LIST_RES = "+LS:"  # +LS: {<sensor1> <sensor2> ...}
-
 
 AT_POLL_REQ = "AT+POL?"  # <sensor-address> <metric>
 AT_POLL_RES = "+POL:"  # <poll-interval>
 AT_POLL_CMD = "AT+POL="  # <sensor-address> <metric> <poll-interval>
-
 
 AT_TH_REQ = "AT+TH?"  # sensor-address> <metric>
 AT_TH_RES = "+TH:"  # +TH: <thresholds-enabled> <threshold-level-low> <threshold-level-high>
@@ -120,7 +117,6 @@ def set_accumulation(_ser, _debug, enable=False):
         _cmd = (AT_ACC_CMD + "0" + "\r\n").encode('utf-8')
     _err = True
     _acc = 0
-
     _ser.write(_cmd)
     _debug.write("COM", F"TX: {_cmd}")
     response = readline(_ser)
@@ -149,9 +145,25 @@ def request_sensors(_ser, _debug):
 
 metric_str_arr = ["01", "02", "03", "04"]
 
+def request_acc(_ser, _debug):
+    _err = True
+    _cmd = (AT_ACC_REQ + "\r\n").encode('utf-8')
+    _ser.write(_cmd)
+    _debug.write("COM", F"TX: {_cmd}")
+    response = readline(_ser)
+    response2 = readline(_ser)
+    _debug.write("COM", F"RX: {response}")
+    _debug.write("COM", F"RX: {response2}")
+    _acc_enabled = 0
+    if AT_ACC_RES in response:
+        _clean_res = clean_response(remove_cmd_str(response, AT_ACC_RES))
+        _acc_enabled = int(_clean_res)
+        _err = False
+    return (_err, _acc_enabled)
 
 def load_data(sensor, _debug, _ser):
     _err = True
+
     _cmd = (AT_POLL_REQ + " " + sensor.get_addr() + " 01\r\n").encode('utf-8')
     _ser.write(_cmd)
     _debug.write("COM", F"TX: {_cmd}")
@@ -264,7 +276,7 @@ class Sensor:
 
     def get_thresholds(self, which_th=TH_HIGH, to_machine=False):
         if which_th == TH_HIGH:
-            return_what =  self._thresholds_high
+            return_what = self._thresholds_high
         else:
             return_what = self._thresholds_low
             

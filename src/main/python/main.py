@@ -30,7 +30,7 @@ ser = serial.Serial(baudrate=_baudrate, xonxoff=_flowcontrol,
 SETTING_PORT_NAME = 'port_name'
 SETTING_MESSAGE = "message"
 
-VERSION = "Version 2.0 by Pierre Verhulst (from V1.0 by Gilles Callebaut)"
+VERSION = "version 2.1 by Pierre Verhulst (from V1.0 by Gilles Callebaut) "
 
 
 def gen_serial_ports() -> Iterator[Tuple[str, str]]:
@@ -379,7 +379,6 @@ class RemoteWidget(QWidget):
         selected_sensor = self._connected_sensors[sensor_str]
         self._debug.write("APP", F"Loading sensor data from {selected_sensor}")
         Motherboard.load_data(selected_sensor, self._debug, ser)
-
         # self.poll_checkbox.setCheckState(selected_sensor._polling_enabled)
         if selected_sensor.get_name() == 'Button Sensor':
             self.poll_label.setVisible(False)
@@ -389,8 +388,7 @@ class RemoteWidget(QWidget):
             self.poll_label.setVisible(True)
             self.poll_lineedit.setVisible(True)
             self.poll_lineedit.setEnabled(True)
-            self.poll_lineedit.setText(
-                str(selected_sensor._polling_interval_sec // 60))
+            self.poll_lineedit.setText(str(selected_sensor._polling_interval_sec // 60))
 
         for idx, (th_e, th_h, th_l, label) in enumerate(zip(selected_sensor._thresholds_enabled,
                                                             selected_sensor.get_thresholds(which_th=Motherboard.TH_HIGH,
@@ -493,6 +491,43 @@ class RemoteWidget(QWidget):
                                                               id_config_4=self.power_config_id[3],
                                                               poll_interval_4=self.power_pol[3],
                                                               thresholds_4=self.power_th[3])
+            elif nb_bd == 5:
+                self.window_power_r = PowerReport.PowerReport(data_acc=self.power_data_acc,
+                                                              id_config_1=self.power_config_id[0],
+                                                              poll_interval_1=self.power_pol[0],
+                                                              thresholds_1=self.power_th[0],
+                                                              id_config_2=self.power_config_id[1],
+                                                              poll_interval_2=self.power_pol[1],
+                                                              thresholds_2=self.power_th[1],
+                                                              id_config_3=self.power_config_id[2],
+                                                              poll_interval_3=self.power_pol[2],
+                                                              thresholds_3=self.power_th[2],
+                                                              id_config_4=self.power_config_id[3],
+                                                              poll_interval_4=self.power_pol[3],
+                                                              thresholds_4=self.power_th[3],
+                                                              id_config_5=self.power_config_id[4],
+                                                              poll_interval_5=self.power_pol[4],
+                                                              thresholds_5=self.power_th[4])
+            elif nb_bd == 6:
+                self.window_power_r = PowerReport.PowerReport(data_acc=self.power_data_acc,
+                                                              id_config_1=self.power_config_id[0],
+                                                              poll_interval_1=self.power_pol[0],
+                                                              thresholds_1=self.power_th[0],
+                                                              id_config_2=self.power_config_id[1],
+                                                              poll_interval_2=self.power_pol[1],
+                                                              thresholds_2=self.power_th[1],
+                                                              id_config_3=self.power_config_id[2],
+                                                              poll_interval_3=self.power_pol[2],
+                                                              thresholds_3=self.power_th[2],
+                                                              id_config_4=self.power_config_id[3],
+                                                              poll_interval_4=self.power_pol[3],
+                                                              thresholds_4=self.power_th[3],
+                                                              id_config_5=self.power_config_id[4],
+                                                              poll_interval_5=self.power_pol[4],
+                                                              thresholds_5=self.power_th[4],
+                                                              id_config_6=self.power_config_id[5],
+                                                              poll_interval_6=self.power_pol[5],
+                                                              thresholds_6=self.power_th[5])
             self.window_power_r.show()
 
     @property
@@ -597,8 +632,9 @@ class RemoteWidget(QWidget):
 
         # For the power report -----------------------------------------------------------------------------------------
         idc = self.power_config_name.index(selected_sensor.get_name())
-        if selected_sensor.get_polling_interval_sec() is not 0:
-            self.power_pol[idc] = int(selected_sensor.get_polling_interval_sec()/60)
+        if selected_sensor.get_polling_interval_sec() != 65535:
+            if selected_sensor.get_polling_interval_sec() != 0:
+                self.power_pol[idc] = int(selected_sensor.get_polling_interval_sec()/60)
         flag = False
         for metrics in range(selected_sensor.get_num_metrics()):
             if selected_sensor.get_thresholds_enabled(metrics) is True:
@@ -642,6 +678,7 @@ class RemoteWidget(QWidget):
         if ser.is_open:
             self._debug.write(
                 "COM", F"Serial port {self.port} is open.")
+
             (err, motherboard_id) = Motherboard.handle_ping(ser, self._debug)
 
             if (not err):
@@ -651,11 +688,15 @@ class RemoteWidget(QWidget):
                 self.disconnect_btn.pressed.connect(self.on_disconnect_btn_pressed)
                 self.sensor_btn.pressed.connect(self.on_sensor_btn_pressed)
                 self.save_btn.pressed.connect(self.on_save_btn_pressed)
-                self.accumulation_checkbox.setVisible(True)
-                self.accumulation_checkbox.setChecked(False)
                 self.port_combobox.setDisabled(True)
                 self.save_btn.setEnabled(True)
                 self.load_sensors()
+
+            (err2, acc_state) = Motherboard.request_acc(ser, self._debug)
+
+            if (not err2):
+                self.accumulation_checkbox.setVisible(True)
+                self.accumulation_checkbox.setCheckState(acc_state)
 
         else:
             self._debug.write(
