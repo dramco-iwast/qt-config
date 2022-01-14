@@ -5,7 +5,7 @@ IWAST Configuration Tool
 
 Make sure that:
 - You use the terminal of Pycharm (really easier...)
-- You have correctly installed the fbs library
+- You have correctly installed the fbs library (https://build-system.fman.io/)
 - You have correctly installed NSIS on your computer (you can download it here: https://nsis.sourceforge.io/Download)
 - You need to specify the path of the NSIS application in your Windows path environment variable
 - You must work with the version 5.9.2 of PyQt5
