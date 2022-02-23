@@ -5,7 +5,7 @@ macholib==1.15.2
 packaging==21.3
 pefile==2021.9.3
 Pillow
-PyInstaller==3.4
+PyInstaller==3.6
 pyparsing==3.0.6
 PyQt5==5.15.6
 PyQt5-Qt5==5.15.2
