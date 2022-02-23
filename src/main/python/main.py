@@ -30,7 +30,7 @@ ser = serial.Serial(baudrate=_baudrate, xonxoff=_flowcontrol,
 SETTING_PORT_NAME = 'port_name'
 SETTING_MESSAGE = "message"
 
-VERSION = "version 2.1 by Pierre Verhulst (from V1.0 by Gilles Callebaut) "
+VERSION = "v2.2"
 
 
 def gen_serial_ports() -> Iterator[Tuple[str, str]]:
@@ -97,6 +97,11 @@ class RemoteWidget(QWidget):
         self.new_config_btn = QPushButton(self.tr('New'))
         self.new_config_btn.setVisible(False)
         self.new_config_btn.pressed.connect(self.on_new_config_pressed)
+
+        # Test connection
+        self.test_btn = QPushButton(self.tr('Test'))
+        self.test_btn.setVisible(False)
+        self.connect_btn.pressed.connect(self.on_test_btn_pressed)
 
         # poll messages
         # Enabled?
@@ -208,9 +213,9 @@ class RemoteWidget(QWidget):
         self.disconnect_btn.pressed.connect(self.on_disconnect_btn_pressed)
 
         # Power Report Button
-        self.power_report_btn = QPushButton(self.tr('Power Report'))
-        self.power_report_btn.setVisible(False)
-        self.power_report_btn.pressed.connect(self.on_power_report_btn_pressed)
+        # self.power_report_btn = QPushButton(self.tr('Power Report'))
+        # self.power_report_btn.setVisible(False)
+        # self.power_report_btn.pressed.connect(self.on_power_report_btn_pressed)
 
         # Data Accumulation Enabling/Disabling
         self.accumulation_checkbox = QCheckBox("Data Accumulation ?", self)
@@ -274,10 +279,11 @@ class RemoteWidget(QWidget):
         layout.addWidget(self.debug_textedit, 9, 0, 1, 6)
 
         # Save and disconnect layout
-        layout.addWidget(self.disconnect_btn, 10, 5)
+        layout.addWidget(self.disconnect_btn, 10, 4)
+        layout.addWidget(self.test_btn, 10, 5)
 
         # Power Report Button
-        layout.addWidget(self.power_report_btn, 10, 0)
+        # layout.addWidget(self.power_report_btn, 10, 0)
 
         # Accumulation Checkbox
         layout.addWidget(self.accumulation_checkbox, 2, 1)
@@ -316,6 +322,10 @@ class RemoteWidget(QWidget):
     #     settings = QSettings()
     #     settings.setValue(SETTING_PORT_NAME, self.port)
     #     settings.setValue(SETTING_MESSAGE, self.msg_lineedit.text())
+
+    def on_test_btn_pressed(self):
+        self._debug.write(
+            "GUI", F"TODO")
 
     def show_error_message(self, msg: str) -> None:
         """Show a Message Box with the error message."""
@@ -634,7 +644,7 @@ class RemoteWidget(QWidget):
         idc = self.power_config_name.index(selected_sensor.get_name())
         if selected_sensor.get_polling_interval_sec() != 65535:
             if selected_sensor.get_polling_interval_sec() != 0:
-                self.power_pol[idc] = int(selected_sensor.get_polling_interval_sec()/60)
+                self.power_pol[idc] = int(selected_sensor.get_polling_interval_sec() / 60)
         flag = False
         for metrics in range(selected_sensor.get_num_metrics()):
             if selected_sensor.get_thresholds_enabled(metrics) is True:
@@ -681,9 +691,10 @@ class RemoteWidget(QWidget):
 
             (err, motherboard_id) = Motherboard.handle_ping(ser, self._debug)
 
-            if (not err):
+            if not err:
                 self._debug.write("COM", F"Connected to {motherboard_id}")
                 self.connect_btn.setEnabled(False)
+                self.test_btn.setVisible(True)
                 self.disconnect_btn.setVisible(True)
                 self.disconnect_btn.pressed.connect(self.on_disconnect_btn_pressed)
                 self.sensor_btn.pressed.connect(self.on_sensor_btn_pressed)
@@ -731,7 +742,7 @@ class RemoteWidget(QWidget):
                     self.power_config_id.append(6)
                 self.power_pol.append(False)
                 self.power_th.append(False)
-                self.power_report_btn.setVisible(True)
+                # self.power_report_btn.setVisible(True)
                 # ------------------------------------------------------------------------------------------------------
 
                 _sensor_str = F"{_name} [{_id}]"

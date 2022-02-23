@@ -17,7 +17,7 @@ AT_TH_H_CMD = "AT+TLH="  # <sensor-address> <metric> <threshold-level-high>
 
 AT_ACC_REQ = "AT+ACC?"  # OK | ERROR <code>
 AT_ACC_CMD = "AT+ACC="
-AT_ACC_RES = "+ACC:"    # +ACC: <0|1>
+AT_ACC_RES = "+ACC:"  # +ACC: <0|1>
 
 AT_CLOSE = "AT+CLS"
 
@@ -54,7 +54,7 @@ def upload_sensor(sensor, _ser, _debug):
     _err = True
 
     _cmd = (AT_POLL_CMD + sensor.get_addr() + " 01 " +
-            str(sensor.get_polling_interval_sec())+"\r\n").encode('utf-8')
+            str(sensor.get_polling_interval_sec()) + "\r\n").encode('utf-8')
     _debug.write("COM", F"TX: {_cmd}")
     _ser.write(_cmd)
     response = readline(_ser)
@@ -63,7 +63,6 @@ def upload_sensor(sensor, _ser, _debug):
     # TODO de rest ook nog eh!
 
     for metric_idx in range(sensor._num_metrics):
-
         AT_TH_E_CMD = "AT+TE="  # <sensor-address> <metric> <thresholds-enabled>
         AT_TH_L_CMD = "AT+TLL="  # <sensor-address> <metric> <threshold-level-low>
         AT_TH_H_CMD = "AT+TLH="  # <sensor-address> <metric> <threshold-level-high>
@@ -71,7 +70,7 @@ def upload_sensor(sensor, _ser, _debug):
         enabled = "1" if sensor._thresholds_enabled[metric_idx] else "0"
 
         _cmd = (AT_TH_E_CMD + sensor.get_addr() + " " +
-                metric_str_arr[metric_idx] + " "+enabled+"\r\n").encode('utf-8')
+                metric_str_arr[metric_idx] + " " + enabled + "\r\n").encode('utf-8')
 
         _ser.write(_cmd)
         _debug.write("COM", F"TX: {_cmd}")
@@ -79,7 +78,7 @@ def upload_sensor(sensor, _ser, _debug):
         _debug.write("COM", F"RX: {response}")
 
         _cmd = (AT_TH_L_CMD + sensor.get_addr() + " " +
-                metric_str_arr[metric_idx] + " "+str(sensor._thresholds_low[metric_idx])+"\r\n").encode('utf-8')
+                metric_str_arr[metric_idx] + " " + str(sensor._thresholds_low[metric_idx]) + "\r\n").encode('utf-8')
 
         _ser.write(_cmd)
         _debug.write("COM", F"TX: {_cmd}")
@@ -87,7 +86,7 @@ def upload_sensor(sensor, _ser, _debug):
         _debug.write("COM", F"RX: {response}")
 
         _cmd = (AT_TH_H_CMD + sensor.get_addr() + " " +
-                metric_str_arr[metric_idx] + " "+str(sensor._thresholds_high[metric_idx])+"\r\n").encode('utf-8')
+                metric_str_arr[metric_idx] + " " + str(sensor._thresholds_high[metric_idx]) + "\r\n").encode('utf-8')
 
         _ser.write(_cmd)
         _debug.write("COM", F"TX: {_cmd}")
@@ -110,6 +109,7 @@ def handle_ping(_ser, _debug) -> (bool, str):
 
     return (_err, _motherboard_id)
 
+
 def set_accumulation(_ser, _debug, enable=False):
     if enable is True:
         _cmd = (AT_ACC_CMD + "1" + "\r\n").encode('utf-8')
@@ -126,6 +126,7 @@ def set_accumulation(_ser, _debug, enable=False):
         _acc = clean_response(remove_cmd_str(response, AT_ACC_RES))
 
     return (_err, _acc)
+
 
 def request_sensors(_ser, _debug):
     _sensors = []
@@ -145,6 +146,7 @@ def request_sensors(_ser, _debug):
 
 metric_str_arr = ["01", "02", "03", "04"]
 
+
 def request_acc(_ser, _debug):
     _err = True
     _cmd = (AT_ACC_REQ + "\r\n").encode('utf-8')
@@ -160,6 +162,7 @@ def request_acc(_ser, _debug):
         _acc_enabled = int(_clean_res)
         _err = False
     return (_err, _acc_enabled)
+
 
 def load_data(sensor, _debug, _ser):
     _err = True
@@ -192,8 +195,10 @@ def load_data(sensor, _debug, _ser):
 
     return _err
 
+
 TH_HIGH = 0
 TH_LOW = 1
+
 
 class Sensor:
 
@@ -227,8 +232,8 @@ class Sensor:
         self._sensor_name = self._sensor_mapping[self._type]
         self._metric_labels = self._metric_labels_mapping[self._type]
 
-        self._thresholds_high = [None]*self._num_metrics
-        self._thresholds_low = [None]*self._num_metrics
+        self._thresholds_high = [None] * self._num_metrics
+        self._thresholds_low = [None] * self._num_metrics
         self._thresholds_enabled = [False for i in range(self._num_metrics)]
 
         self._polling_interval_sec = 65535
@@ -266,9 +271,9 @@ class Sensor:
                 new_value = value / 100
         elif metric_str == "Battery Level [V]":
             if to_machine:
-                new_value = value*10000
+                new_value = value * 10000
             else:
-                new_value = value/10000
+                new_value = value / 10000
         else:
             # value is the same
             new_value = value
@@ -279,14 +284,15 @@ class Sensor:
             return_what = self._thresholds_high
         else:
             return_what = self._thresholds_low
-            
-        return [self.convert_metric_value(value=v,metric_idx=idx, to_machine=to_machine) for idx, v in enumerate(return_what)]
+
+        return [self.convert_metric_value(value=v, metric_idx=idx, to_machine=to_machine) for idx, v in
+                enumerate(return_what)]
 
     def get_thresholds_enabled(self, id):
         return self._thresholds_enabled[id]
 
     def set_threshold(self, value, metric_idx=0, to_machine=True, which_th=TH_HIGH):
-        new_value = self.convert_metric_value(value= value, metric_idx=metric_idx, to_machine=to_machine)
+        new_value = self.convert_metric_value(value=value, metric_idx=metric_idx, to_machine=to_machine)
 
         if which_th == TH_HIGH:
             self._thresholds_high[metric_idx] = int(new_value)
